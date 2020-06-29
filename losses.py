@@ -12,13 +12,14 @@ class SupConLoss(nn.Module):
     """Supervised Contrastive Learning: https://arxiv.org/pdf/2004.11362.pdf.
     It also supports the unsupervised contrastive loss in SimCLR"""
     def __init__(self, temperature=0.07, contrast_mode='all',
-                 base_temperature=0.07):
+                 base_temperature=0.07, match_type='all'):
         super(SupConLoss, self).__init__()
         self.temperature = temperature
         self.contrast_mode = contrast_mode
         self.base_temperature = base_temperature
+        self.match_type = match_type
 
-    def forward(self, features, labels=None, mask=None, match_type="all"):
+    def forward(self, features, labels=None, mask=None):
         """Compute loss for model. If both `labels` and `mask` are None,
         it degenerates to SimCLR unsupervised loss:
         https://arxiv.org/pdf/2002.05709.pdf
@@ -58,14 +59,14 @@ class SupConLoss(nn.Module):
             # [0,1,0,0] == [0,1,0,0]
             for i, gt_i in enumerate(labels):
                 for j, gt_j in enumerate(labels):
-                    if match_type == "all":
+                    if self.match_type == "all":
                         mask[i,j] = 1 if (gt_i == gt_j).all() else 0 
-                    if match_type == "any":
+                    if self.match_type == "any":
                         pos_idx = (gt_i == 1) | (gt_j == 1)
                         gt_i = gt_i[pos_idx]
                         gt_j = gt_j[pos_idx]
                         mask[i,j] = 1 if (gt_i == gt_j).any() else 0 
-                    if match_type == "iou_weighted":
+                    if self.match_type == "iou_weighted":
                         pos_idx = (gt_i == 1) | (gt_j == 1)
                         gt_i = gt_i[pos_idx]
                         gt_j = gt_j[pos_idx]
@@ -74,7 +75,7 @@ class SupConLoss(nn.Module):
                         else: 
                             weight = (gt_i == gt_j).sum() / pos_idx.sum()
                         mask[i,j] = weight
-                    if match_type == "f1_weighted":
+                    if self.match_type == "f1_weighted":
                         pos_idx = (gt_i == 1) | (gt_j == 1)
                         gt_i = gt_i[pos_idx]
                         gt_j = gt_j[pos_idx]
@@ -83,13 +84,13 @@ class SupConLoss(nn.Module):
                         fn = gt_j.sum() - tp
                         weight = (2*tp) / (2*tp + fp + fn)
                         mask[i,j] = weight
-                    if match_type == "one_weighted":
+                    if self.match_type == "one_weighted":
                         pos_idx = (gt_i == 1) | (gt_j == 1)
                         gt_i = gt_i[pos_idx]
                         gt_j = gt_j[pos_idx]
                         weight = (gt_i == gt_j).sum() / len(gt_i)
                         mask[i,j] = weight
-                    if match_type == "zero_and_one_weighted":
+                    if self.match_type == "zero_and_one_weighted":
                         mask[i,j] = (gt_i == gt_j).sum() / len(gt_i)
         else:
             mask = mask.float().to(device)

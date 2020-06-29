@@ -5,6 +5,7 @@ import sys
 import argparse
 import time
 import math
+import tqdm
 
 import tensorboard_logger as tb_logger
 import torch
@@ -156,7 +157,7 @@ def set_loader(opt):
     else:
         # TODO: 
         train_transform = transforms.Compose([
-            transforms.RandomCrop((200, 200)),
+            transforms.RandomCrop((224, 224)),
             transforms.ToTensor()
         ])
         pass
@@ -213,7 +214,7 @@ def set_model(opt):
     return model, criterion
 
 
-def train(train_loader, model, criterion, optimizer, epoch, opt):
+def train(train_loader, model, criterion, optimizer, epoch, opt, logger):
     """one epoch training"""
     model.train()
 
@@ -222,57 +223,75 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     losses = AverageMeter()
 
     end = time.time()
-    for idx, (images, labels) in enumerate(train_loader):
 
-        data_time.update(time.time() - end)
+    num_steps = len(train_loader)
+    with tqdm.tqdm(total=num_steps, unit=f" [TRAIN] epoch {epoch} itr") as progress_bar:
+        for idx, (images, labels) in enumerate(train_loader):
 
-        # stack labels 
-        labels = torch.stack(labels)
-        labels = labels.transpose_(0,1)
+            data_time.update(time.time() - end)
 
-        images = torch.cat([images[0], images[1]], dim=0)
-        images = images.cuda(non_blocking=True)
-        labels = labels.cuda(non_blocking=True)
-        bsz = labels.shape[0]
+            # stack labels 
+            labels = torch.stack(labels)
+            labels = labels.transpose_(0,1)
 
-        # warm-up learning rate
-        warmup_learning_rate(opt, epoch, idx, len(train_loader), optimizer)
+            # log image
+            global_itr = (epoch-1) * num_steps + idx
+            if idx % 200 == 0:
+                img1 = images[0][0][0].unsqueeze(0)
+                img2 = images[1][0][0].unsqueeze(0)
+                logger.log_images("image_v1", img1, global_itr)
+                logger.log_images("image_v2", img2, global_itr)
 
-        # compute loss
-        features = model(images)
+            images = torch.cat([images[0], images[1]], dim=0)
+            images = images.cuda(non_blocking=True)
+            labels = labels.cuda(non_blocking=True)
+            bsz = labels.shape[0]
 
-        f1, f2 = torch.split(features, [bsz, bsz], dim=0)
+            # warm-up learning rate
+            warmup_learning_rate(opt, epoch, idx, len(train_loader), optimizer)
 
-        features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
-        if opt.method == 'SupCon':
-            loss = criterion(features, labels)
-        elif opt.method == 'SimCLR':
-            loss = criterion(features)
-        else:
-            raise ValueError('contrastive method not supported: {}'.
-                             format(opt.method))
+            # compute loss
+            features = model(images)
 
-        # update metric
-        losses.update(loss.item(), bsz)
+            f1, f2 = torch.split(features, [bsz, bsz], dim=0)
 
-        # SGD
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
+            if opt.method == 'SupCon':
+                loss = criterion(features, labels)
+            elif opt.method == 'SimCLR':
+                loss = criterion(features)
+            else:
+                raise ValueError('contrastive method not supported: {}'.
+                                format(opt.method))
 
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+            # log 
+            logger.log_value('loss', loss, global_itr)
+            logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], global_itr)
+            logger.log_value('epoch', epoch, global_itr)
 
-        # print info
-        if (idx + 1) % opt.print_freq == 0:
-            print('Train: [{0}][{1}/{2}]\t'
-                  'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
-                   epoch, idx + 1, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses))
-            sys.stdout.flush()
+            # update metric
+            losses.update(loss.item(), bsz)
+
+            # SGD
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
+
+            # print info
+            if (idx + 1) % opt.print_freq == 0:
+                print('Train: [{0}][{1}/{2}]\t'
+                    'BT {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                    'DT {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                    'loss {loss.val:.3f} ({loss.avg:.3f})'.format(
+                    epoch, idx + 1, len(train_loader), batch_time=batch_time,
+                    data_time=data_time, loss=losses))
+                sys.stdout.flush()
+
+            progress_bar.update(1)
 
     return losses.avg
 
@@ -298,13 +317,13 @@ def main():
 
         # train for one epoch
         time1 = time.time()
-        loss = train(train_loader, model, criterion, optimizer, epoch, opt)
+        loss = train(train_loader, model, criterion, optimizer, epoch, opt, logger)
         time2 = time.time()
         print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
 
         # tensorboard logger
-        logger.log_value('loss', loss, epoch)
-        logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], epoch)
+        #logger.log_value('loss', loss, epoch)
+        #logger.log_value('learning_rate', optimizer.param_groups[0]['lr'], epoch)
 
         if epoch % opt.save_freq == 0:
             save_file = os.path.join(
