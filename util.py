@@ -119,7 +119,7 @@ def resize_img(img, scale):
         hpercent = (scale / float(size[1]))
         wsize = int((float(size[0]) * float(hpercent)))
         desireable_size = (wsize, scale)
-    resized_img = cv2.resize(img, desireable_size[::-1]) #this flips the desireable_size vector
+    resized_img = cv2.resize(img, desireable_size[::-1], interpolation = cv2.INTER_AREA) #this flips the desireable_size vector
 
     #Padding
     if max_ind == 0:

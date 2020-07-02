@@ -35,6 +35,7 @@ class CheXpertDataset(Dataset):
     def __init__(self,
                  data_path: Union[str, Path],
                  data_transform = None,
+                 img_type:str = "All", 
                  uncertain: str = "ignore"):
         ''' Constructor for dataset class
         Args: 
@@ -42,6 +43,10 @@ class CheXpertDataset(Dataset):
         '''
         # read in csv file
         self.df = pd.read_csv(data_path)
+
+        # filter image type 
+        if img_type != "All":
+            self.df = self.df[self.df['Frontal/Lateral'] == 'Frontal']
 
         self.data_path = data_path
 

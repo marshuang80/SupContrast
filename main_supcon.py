@@ -6,7 +6,7 @@ import argparse
 import time
 import math
 import tqdm
-
+import PIL
 import tensorboard_logger as tb_logger
 import torch
 import torch.backends.cudnn as cudnn
@@ -65,6 +65,8 @@ def parse_option():
     # method
     parser.add_argument('--method', type=str, default='SupCon',
                         choices=['SupCon', 'SimCLR'], help='choose method')
+    parser.add_argument('--img_type', type=str, default='all',
+                        choices=['All','Frontal'])
     parser.add_argument('--match_type', type=str, default='all',
                         choices=['all','any','iou_weighted','f1_weighted', 'one_weighted','zero_and_one_weighted'], help='choose method')
 
@@ -157,6 +159,7 @@ def set_loader(opt):
     else:
         # TODO: 
         train_transform = transforms.Compose([
+            transforms.RandomRotation(30, resample=PIL.Image.BILINEAR),
             transforms.RandomCrop((224, 224)),
             transforms.ToTensor()
         ])
@@ -180,6 +183,7 @@ def set_loader(opt):
             num_workers=opt.num_workers, pin_memory=True, sampler=train_sampler)
     elif opt.dataset == 'chexpert':
         dataset_args = {'data_path': CHEXPERT_TRAIN_CSV, 
+                        'img_type': opt.img_type,
                         'data_transform': TwoCropTransform(train_transform)}
         dataloader_args = {'batch_size': opt.batch_size,
                           'num_workers': 1}
