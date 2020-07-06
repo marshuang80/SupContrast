@@ -60,7 +60,7 @@ class Logger:
 
       metrics_list=[]
       for pathology in self.conditions:
-        metrics_list.append(metrics_dict[pathology][metrics_dict])
+        metrics_list.append(metrics_dict[pathology][self.metrics_name])
       current_mean = sum(metrics_list) / len(metrics_list)
 
       if self.metrics_name < current_mean:
