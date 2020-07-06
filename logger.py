@@ -2,12 +2,13 @@ import wandb
 import cv2
 import pandas as pd
 
+from constants                import *
 from torch.utils.tensorboard  import SummaryWriter
 from pathlib                  import Path
 
 class Logger:
 
-  def __init__(self, log_dir:str):
+  def __init__(self, log_dir:str, metrics_name):
         # define summery writer
       self.writer = SummaryWriter
       self.wandb = wandb.log()
@@ -19,6 +20,9 @@ class Logger:
 
       # define experiment/trial file structure
       self._init_trial_dir()
+      self.min_metrics = float('-inf') #gets updated later
+      self.metrics_name = metrics_name
+      self.conditions = CHEXPERT_COMPETITIONS_TASKS
 
   def log_dict(self, dict_values, step, split):
       #write to wandb
@@ -52,14 +56,20 @@ class Logger:
         df = df.append(df_old)
         df.to_csv(metrics_file)
 
-  def save_checkpoint(self, model):
+  def save_checkpoint(self, model, metrics_dict):
 
-      ckpt_dict = {'model_name': model.__class__.__name__, 
-                   'model_args': model.args_dict(),
-                   'model_state': model.state_dict()}.ckpt_path = os.path.join(args.save_dir, f"{model.__class__.__name__}_best.pth")
-                     
-      torch.save(ckpt_dict, celf.ckpt_dir)
+      metrics_list=[]
+      for pathology in self.conditions:
+        metrics_list.append(metrics_dict[pathology][metrics_dict])
+      current_mean = sum(metrics_list) / len(metrics_list)
 
+      if self.metrics_name < current_mean:
+        ckpt_dict = {'model_name': model.__class__.__name__, 
+                     'model_args': model.args_dict(),
+                     'model_state': model.state_dict()}.ckpt_path = os.path.join(args.save_dir, f"{model.__class__.__name__}_best.pth")
+                       
+        torch.save(ckpt_dict, self.ckpt_dir)
+        
   def _init_trial_dir(self):
       """
       # structure the log directory for this trial
