@@ -49,8 +49,11 @@ class Logger:
       #self.writer.add_scalars(split, dict_values, step)
 
   def log_image(self, img, step):
+      # get first image 
+      img = img[0]
+
       # unnormalize first image
-      for t, m, s in zip(img[0], IMAGENET_MEAN, IMAGENET_STD):
+      for t, m, s in zip(img, IMAGENET_MEAN, IMAGENET_STD):
           t.mul_(s).add_(m)
 
       # log image
