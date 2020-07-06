@@ -44,13 +44,16 @@ class Logger:
       wandb.log(dict_values)
 
       # write to tensorboard
-      #for key, value in dict_values.items():
-      #    self.writer.add_scalar(key, value, step)
-      self.writer.add_scalars(split, dict_values, step)
+      for key, value in dict_values.items():
+          self.writer.add_scalar(key, value, step)
+      #self.writer.add_scalars(split, dict_values, step)
 
   def log_image(self, img, step):
+      # unnormalize first image
+      for t, m, s in zip(img[0], IMAGENET_MEAN, IMAGENET_STD):
+          t.mul_(s).add_(m)
 
-      img = img[0][0].unsqueeze(0)
+      # log image
       self.writer.add_image('images', img, step)
 
   def log_iteration(self, dict_values, step, split):

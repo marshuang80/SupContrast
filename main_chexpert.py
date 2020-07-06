@@ -4,11 +4,20 @@ import util
 import pandas as pd
 import numpy as np
 import sklearn.metrics as sk_metrics
+import tqdm
+
 from constants import *
 from logger import Logger
 from torchvision import transforms
 from dataset.chexpert import get_dataloader 
 from networks.densenet import CheXpert
+
+
+# Reproducibility
+torch.manual_seed(6)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+np.random.seed(0)
 
 
 def train(args):
@@ -59,10 +68,10 @@ def train(args):
     for epoch in args.num_epoch:
 
         # training loop
-        for inputs, targets in train_loader:
+        for inputs, targets in tqdm.tqdm(train_loader):
 
             # validation loop 
-            if global_step % args.iters_per_eval:
+            if global_step % args.iters_per_eval == 0:
                 model.eval()
                 probs = []
                 gt = []
@@ -97,10 +106,11 @@ def train(args):
                 logger.log_iteration(log_dict, global_step, "val")
 
                 # log image
-                logger.log_image(val_inputs, global_step)
+                logger.log_image(inputs, global_step)
 
                 # save checkpoint
                 logger.save_checkpoint(model, metrics, global_step)
+                model.to(args.device)
 
             model.train()
             with torch.set_grad_enabled(True):
@@ -110,6 +120,8 @@ def train(args):
 
                 # Compute the minibatch loss.
                 loss = loss_fn(logits, targets.to(args.device))
+
+                logger.log_dict({"train/loss": loss}, global_step, "train")
 
                 # Perform a backward pass.
                 optimizer.zero_grad()
@@ -132,11 +144,10 @@ if __name__ == '__main__':
     parser.add_argument('--crop_shape', type=int, default=320)
     parser.add_argument('--optimizer', type=str, default="adam", choices=["sdg", "adam"])
     parser.add_argument('--lr', type=float, default=1e-3)
-    # TODO: default momentum, dampening, weight decay
-    parser.add_argument('--momentum', type=float, default=0.1)
-    parser.add_argument('--sgd_dampening', type=float, default=0.1)
-    parser.add_argument('--weight_decay', type=float, default=0.001)
-    parser.add_argument('--lr_decay', type=float, default=0.001)
+    parser.add_argument('--momentum', type=float, default=0.9)
+    parser.add_argument('--sgd_dampening', type=float, default=0.9)
+    parser.add_argument('--weight_decay', type=float, default=0.0)
+    parser.add_argument('--lr_decay', type=float, default=0.1)
     parser.add_argument('--threshold', type=float, default=0.5)
     parser.add_argument('--log_dir', type=str, default="./logs")
     parser.add_argument('--eval_metrics', type=str, default="auroc", choices=["auroc", "auprc", "accuracy", "precision", "recall"])
