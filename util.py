@@ -4,7 +4,14 @@ import math
 import numpy as np
 import torch
 import torch.optim as optim
+#import os 
+#import sys
+#sys.path.append(os.getcwd())
 import cv2
+import pandas as pd
+import sklearn.metrics as sk_metrics
+
+from constants import *
 
 
 class TwoCropTransform:
@@ -77,10 +84,20 @@ def warmup_learning_rate(args, epoch, batch_id, total_batches, optimizer):
 
 
 def set_optimizer(opt, model):
-    optimizer = optim.SGD(model.parameters(),
-                          lr=opt.learning_rate,
-                          momentum=opt.momentum,
-                          weight_decay=opt.weight_decay)
+    if opt.optimizer == 'sgd':
+        optimizer = optim.SGD(model.parameters(), 
+                              opt.lr,
+                              momentum=opt.sgd_momentum,
+                              weight_decay=opt.weight_decay,
+                              dampening=opt.sgd_dampening)
+    elif opt.optimizer == 'adam':
+        optimizer = optim.Adam(model.parameters(), 
+                               opt.lr,
+                               betas=(0.9, 0.999),
+                               weight_decay=opt.weight_decay)
+    else:
+        raise ValueError(f'Unsupported optimizer: {opt.optimizer}')
+
     return optimizer
 
 
@@ -95,6 +112,44 @@ def save_model(model, optimizer, opt, epoch, save_file):
     torch.save(state, save_file)
     del state
 
+def undefined_catcher(func, x, y):
+    try:
+        return func(x, y)
+    except:
+        return np.nan
+
+def evaluate(probs, targets, threshold):
+    # aggregate results
+    probs_concat = np.concatenate(probs)
+    gt_concat = np.concatenate(targets)
+    probs_df = pd.DataFrame({task: probs_concat[:, i]
+                        for i, task in enumerate(CHEXPERT_TASKS)})
+    gt_df = pd.DataFrame({task: gt_concat[:, i]
+                    for i, task in enumerate(CHEXPERT_TASKS)})
+    preds_df = {}
+    for i, task in enumerate(CHEXPERT_TASKS):
+        pred = [1 if p >= threshold else 0 for p in probs_concat[:,i]]
+        preds_df[task] = pred
+
+    # loop over tasks
+    metrics = dict()
+    for task in CHEXPERT_TASKS:
+        # extract task specific predictions and label
+        task_gt = gt_df[task]
+        task_probs = probs_df[task]
+        task_preds = preds_df[task]
+
+        # calculate metrics 
+        tasks_metrics = dict()
+        tasks_metrics['auprc'] = undefined_catcher(sk_metrics.average_precision_score, task_gt, task_probs)
+        tasks_metrics['auroc'] = undefined_catcher(sk_metrics.roc_auc_score, task_gt, task_probs)
+        tasks_metrics['accuracy'] = undefined_catcher(sk_metrics.accuracy_score, task_gt, task_preds)
+        tasks_metrics['precision'] = undefined_catcher(sk_metrics.precision_score, task_gt, task_preds)
+        tasks_metrics['recall'] = undefined_catcher(sk_metrics.recall_score, task_gt, task_preds)
+
+        metrics[task] = tasks_metrics
+    
+    return metrics
 
 def resize_img(img, scale):
     """

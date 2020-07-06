@@ -97,6 +97,8 @@ class CheXpertDataset(Dataset):
         if self.data_transform is not None:
             x = self.data_transform(x)
 
+        y = torch.tensor(y)
+
         return x, y
 
 

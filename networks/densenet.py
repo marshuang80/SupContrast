@@ -31,6 +31,35 @@ class LinearBatchNorm(nn.Module):
         return x
 
 
+class CheXpert(nn.Module):
+    """Normal DenseNet for CheXpert"""
+    def __init__(self, model_name='densenet121', num_classes=14):
+        super(CheXpert, self).__init__()
+
+
+        model_fun, dim_in = model_dict[model_name]
+        self.model= model_fun()
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.model.classifier = nn.Linear(dim_in, num_classes)
+        self.model_name = model_name 
+        self.num_classes = num_classes
+
+
+    def forward(self, x):
+
+        x = self.model.features(x)
+        x = F.relu(x, inplace=True)
+        x = self.pool(x).view(x.size(0), -1)
+        x = self.model.classifier(x)
+        return x
+
+    def args_dict(self):
+        return {
+            "model_name": self.model_name,
+            "num_classes": self.num_classes
+        }
+
+
 class SupConDenseNet(nn.Module):
     """backbone + projection head"""
     def __init__(self, name='densenet121', head='mlp', feat_dim=128):
