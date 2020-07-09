@@ -95,6 +95,11 @@ def set_optimizer(opt, model):
                                opt.lr,
                                betas=(0.9, 0.999),
                                weight_decay=opt.weight_decay)
+    elif opt.otimizer == 'adamw':
+        optimizer = optim.AdamW(model.parameters(), 
+                               opt.lr,
+                               betas=(0.9, 0.999),
+                               weight_decay=opt.weight_decay)
     else:
         raise ValueError(f'Unsupported optimizer: {opt.optimizer}')
 
