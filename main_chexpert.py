@@ -71,7 +71,7 @@ def train(args):
     for epoch in range(args.num_epoch):
 
         # training loop
-        for inputs, targets in tqdm.tqdm(train_loader, desc=f"epoch={epoch}"):
+        for inputs, targets in tqdm.tqdm(train_loader, desc=f"[epoch {epoch}]"):
 
             # validation loop 
             if global_step % args.iters_per_eval == 0:
