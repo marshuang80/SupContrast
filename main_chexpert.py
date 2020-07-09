@@ -50,6 +50,9 @@ def train(args):
 
     # put model on device
     model = CheXpert(model_name="densenet121", num_classes=14)
+    if args.device == "cuda" and len(args.gpu_ids) > 1:
+        print(args.gpu_ids)
+        model = torch.nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
     model.train()
 

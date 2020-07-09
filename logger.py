@@ -87,8 +87,8 @@ class Logger:
 
       if self.min_metrics < current_mean:
         ckpt_dict = {'model_name': model.__class__.__name__, 
-                     'model_args': model.cpu().args_dict(),
-                     'model_state': model.cpu().state_dict()}
+                     'model_args': model.module.cpu().args_dict(),
+                     'model_state': model.module.cpu().state_dict()}
         
         ckpt_path = self.ckpt_dir / f"{model.__class__.__name__}_{itr}.pth"
         torch.save(ckpt_dict, ckpt_path)
