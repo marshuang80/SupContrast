@@ -68,10 +68,10 @@ def train(args):
     global_step = 0
 
     # iterate over epoch
-    for epoch in args.num_epoch:
+    for epoch in range(args.num_epoch):
 
         # training loop
-        for inputs, targets in tqdm.tqdm(train_loader):
+        for inputs, targets in tqdm.tqdm(train_loader, desc=f"epoch={epoch}"):
 
             # validation loop 
             if global_step % args.iters_per_eval == 0:
@@ -142,10 +142,10 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--iters_per_eval', type=int, default=100)
     parser.add_argument('--gpu_ids', type=str, default='0')
-    parser.add_argument('--num_epoch', type=str, default='10')
+    parser.add_argument('--num_epoch', type=int, default=3)
     parser.add_argument('--resize_shape', type=int, default=320)
     parser.add_argument('--crop_shape', type=int, default=320)
-    parser.add_argument('--optimizer', type=str, default="adam", choices=["sdg", "adam"])
+    parser.add_argument('--optimizer', type=str, default="adam", choices=["sdg", "adam", "adamw"])
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--sgd_dampening', type=float, default=0.9)
