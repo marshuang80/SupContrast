@@ -30,7 +30,7 @@ class Logger:
 
       # define summery writer
       self.writer = SummaryWriter(self.trial_tb_dir)
-      wandb.init(config=hyperparameter_defaults, project='chexpert_training')
+      wandb.init(config=hyperparameter_defaults, project=args.wandb_project_name)
 
 
       # define experiment/trial file structure
