@@ -87,7 +87,7 @@ def set_optimizer(opt, model):
     if opt.optimizer == 'sgd':
         optimizer = optim.SGD(model.parameters(), 
                               opt.lr,
-                              momentum=opt.sgd_momentum,
+                              momentum=opt.momentum,
                               weight_decay=opt.weight_decay,
                               dampening=opt.sgd_dampening)
     elif opt.optimizer == 'adam':
@@ -95,7 +95,7 @@ def set_optimizer(opt, model):
                                opt.lr,
                                betas=(0.9, 0.999),
                                weight_decay=opt.weight_decay)
-    elif opt.otimizer == 'adamw':
+    elif opt.optimizer == 'adamw':
         optimizer = optim.AdamW(model.parameters(), 
                                opt.lr,
                                betas=(0.9, 0.999),

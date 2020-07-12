@@ -71,7 +71,7 @@ def train(args):
     for epoch in range(args.num_epoch):
 
         # training loop
-        for inputs, targets in tqdm.tqdm(train_loader, desc=f"epoch={epoch}"):
+        for inputs, targets in tqdm.tqdm(train_loader, desc=f"[epoch {epoch}]"):
 
             # validation loop 
             if global_step % args.iters_per_eval == 0:
@@ -145,7 +145,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_epoch', type=int, default=3)
     parser.add_argument('--resize_shape', type=int, default=320)
     parser.add_argument('--crop_shape', type=int, default=320)
-    parser.add_argument('--optimizer', type=str, default="adam", choices=["sdg", "adam", "adamw"])
+    parser.add_argument('--optimizer', type=str, default="adam", choices=["sgd", "adam", "adamw"])
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--sgd_dampening', type=float, default=0.9)
