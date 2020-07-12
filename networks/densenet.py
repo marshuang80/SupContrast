@@ -33,12 +33,28 @@ class LinearBatchNorm(nn.Module):
 
 class CheXpert(nn.Module):
     """Normal DenseNet for CheXpert"""
-    def __init__(self, model_name='densenet121', num_classes=14):
+    def __init__(self, model_name='densenet121', num_classes=14, ckpt_path=None):
         super(CheXpert, self).__init__()
 
+        if ckpt_path is not None:
+            ckpt = torch.load(ckpt_path)
+            opt = ckpt['opt']
+            model_state = ckpt['model']
 
-        model_fun, dim_in = model_dict[model_name]
-        self.model= model_fun()
+            # handle models weights saved in dataparallel
+            if "module" in list(model_state.keys())[0]:
+                temp_model_state = {}
+                for k,v in model_state.items():
+                    new_k = ".".join(k.split(".module."))
+                    temp_model_state[new_k] = v
+                model_state = temp_model_state 
+
+            self.model = SupConDenseNet(name=opt.model)
+            self.model.load_state_dict(model_state)
+            dim_in = self.model.dim_in
+        else:
+            model_fun, dim_in = model_dict[model_name]
+            self.model= model_fun()
         self.pool = nn.AdaptiveAvgPool2d(1)
         self.model.classifier = nn.Linear(dim_in, num_classes)
         self.model_name = model_name 
@@ -65,6 +81,7 @@ class SupConDenseNet(nn.Module):
     def __init__(self, name='densenet121', head='mlp', feat_dim=128):
         super(SupConDenseNet, self).__init__()
         model_fun, dim_in = model_dict[name]
+        self.dim_in = dim_in
         self.encoder = model_fun()
         self.pool = nn.AdaptiveAvgPool2d((1,1))
         if head == 'linear':
@@ -110,3 +127,9 @@ class LinearClassifier(nn.Module):
 
     def forward(self, features):
         return self.fc(features)
+
+
+if __name__ == "__main__":
+    # test
+    ckpt_path = "/data4/selfsupervision/log/SupCon/chexpert_models/SupCon_chexpert_densenet161_lr_0.0006752719463409214_decay_0.0001_bsz_4_temp_0.07_trial_0/last.pth" 
+    model = CheXpert(ckpt_path=ckpt_path)
